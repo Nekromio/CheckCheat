@@ -22,6 +22,7 @@ Description: The plugin makes it possible to conveniently check the player
 	}
 }
 
+
 5. In the settings file, you can change the call overlay and the ban time
 /cfg/sourcemod/cc.cfg
 
