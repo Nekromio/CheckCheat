@@ -4,6 +4,7 @@
 #include <sdktools_stringtables>
 #include <smartdm>
 #include <materialadmin>
+#include <sdktools_sound>
 
 ConVar
 	cvBanTime;
@@ -19,6 +20,7 @@ int
 char
 	sFile[PLATFORM_MAX_PATH],
 	sOverlay[PLATFORM_MAX_PATH],
+	sSound[PLATFORM_MAX_PATH],
 	sContact[MAXPLAYERS+1][192],
 	sSteam[MAXPLAYERS+1][32],
 	sIp[MAXPLAYERS+1][16],
@@ -29,7 +31,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.0.6",
+	version = "1.0.7",
 	url = "https://ggwp.site/"
 };
 
@@ -39,6 +41,10 @@ public void OnPluginStart()
 	cvar = CreateConVar("sm_cc_overlay", "overlay_cheats/ban_cheats_v10.vmt", "Оверлей");
 	GetConVarString(cvar, sOverlay, sizeof(sOverlay));
 	HookConVarChange(cvar, OnConVarChanges_Overlay);
+	
+	cvar = CreateConVar("sm_cc_sound", "", "Звук для проигрывания подозреваемому | без папки sound/");
+	GetConVarString(cvar, sSound, sizeof(sSound));
+	HookConVarChange(cvar, OnConVarChanges_Sound);
 	
 	cvBanTime = CreateConVar("sm_cc_bantime", "700", "Время бана в минутах");
 	
@@ -85,6 +91,11 @@ public void OnConVarChanges_Overlay(ConVar cvar, const char[] oldValue, const ch
 	GetConVarString(cvar, sOverlay, sizeof(sOverlay));
 }
 
+public void OnConVarChanges_Sound(ConVar cvar, const char[] oldValue, const char[] newValue)
+{
+	GetConVarString(cvar, sSound, sizeof(sSound));
+}
+
 public Action CreateOverlay(Handle timer)
 {
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && iCCheat[i])
@@ -106,12 +117,25 @@ public Action CreateOverlay(Handle timer)
 public void OnMapStart()
 {
 	char buffer[PLATFORM_MAX_PATH];
+	if(sSound[0])
+	{
+		char bufferSound[PLATFORM_MAX_PATH];
+		FormatEx(bufferSound, sizeof(bufferSound), "sound/%s", sSound);
+		AddFileToDownloadsTable(bufferSound);
+		PrecacheSound(sSound, true);
+	}
 	if(sOverlay[0])
 	{
 		Format(buffer, sizeof(buffer), "materials/%s", sOverlay);
 		Downloader_AddFileToDownloadsTable(buffer);
 		PrecacheModel(buffer, true);
 	}
+}
+
+public void OnMapEnd()
+{
+	for(int i = 1; i <= MaxClients; i++)
+		iCCheat[i] = 0;
 }
 
 public Action Cmd_CC(int client, any arg)
@@ -187,6 +211,7 @@ void CheckCheatsClient(int admin, int cheater)
 	iAdminCheck[admin] = cheater;
 	LogToFile(sFile, "Админ [%N][%s][%s] вызвал на проверку [%N][%s][%s]", admin, sSteam[admin], sIp[admin], cheater, sSteam[cheater], sIp[cheater]);
 	MenuCheack(admin, cheater);
+	EmitSoundToClient(cheater, sSound);
 	
 	return;
 }
