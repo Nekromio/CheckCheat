@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+    "$basetexture"    "overlay_cheats/ban_cheats"
+    "$translucent"     "1"
+}
