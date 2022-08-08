@@ -31,7 +31,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.0.7",
+	version = "1.0.8",
 	url = "https://ggwp.site/"
 };
 
@@ -196,7 +196,7 @@ public int CreatMenuClient(Menu hMenuLocal, MenuAction action, int client, int i
 
 void CheckCheatsClient(int admin, int cheater)
 {
-	if(admin || cheater < 1)
+	if(admin < 1 || cheater < 1)
 		return;
 		
 	//PrintToChatAll("Индекс [%d]", cheater);
@@ -211,9 +211,9 @@ void CheckCheatsClient(int admin, int cheater)
 	iAdminCheck[admin] = cheater;
 	LogToFile(sFile, "Админ [%N][%s][%s] вызвал на проверку [%N][%s][%s]", admin, sSteam[admin], sIp[admin], cheater, sSteam[cheater], sIp[cheater]);
 	MenuCheack(admin, cheater);
-	EmitSoundToClient(cheater, sSound);
+	if(sSound[0])
+		EmitSoundToClient(cheater, sSound);
 	
-	return;
 }
 
 void MenuCheack(int admin, int cheater)
