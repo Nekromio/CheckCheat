@@ -31,7 +31,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.0.8",
+	version = "1.0.9",
 	url = "https://ggwp.site/"
 };
 
@@ -70,7 +70,6 @@ void CheckFile()
 	FormatTime(sTime, sizeof(sTime), "%Y.%m.%d");
 	BuildPath(Path_SM, sFile, sizeof(sFile), "logs/cc/cc_%s.log", sTime);
 }
-
 
 public void OnClientPostAdminCheck(int client)
 {
@@ -134,15 +133,32 @@ public void OnMapStart()
 
 public void OnMapEnd()
 {
-	for(int i = 1; i <= MaxClients; i++)
+	for(int i = 1; i <= MaxClients; i++) if(IsValidClient(i) && IsClientInGame(i))
+	{
+		iAdminCheck[i] = 0;
 		iCCheat[i] = 0;
+	}
 }
 
 public Action Cmd_CC(int client, any arg)
 {
 	if(!client)
 		return Plugin_Continue;
-		
+	
+	if(iCCheat[client])
+	{
+		PrintToChat(client, "Вы сейчас проходите проверку ! И не можете использовать это меню !");
+		LogToFile(sFile, "Админ [%N][%s][%s] пытался вызвать меню проверки !", client, sSteam[client], sIp[client]);
+		return Plugin_Continue;
+	}
+	
+	if(CheckCheatClient(client))
+	{
+		PrintToChat(client, "Вы сейчас и так проверяте игрока ! Завершите эту проверку !");
+		LogToFile(sFile, "Админ [%N][%s][%s] пытался вызвать меню проверки хотя и так проверял игрока !", client, sSteam[client], sIp[client]);
+		return Plugin_Continue;
+	}
+	
 	CreatMenu(client);
 	hMenu[client].Display(client, MENU_TIME_FOREVER);
 	
@@ -157,7 +173,7 @@ void CreatMenu(int client)
 	hMenu[client] = new Menu(CreatMenuClient);
 	hMenu[client].SetTitle("Кого вызвать на проверку?");
 	int iItem;
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client)
+	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
 	{
 		iItem++;
 		iOneChosen[client][i] = iItem;
@@ -330,8 +346,33 @@ public Action Command_JoinTeam(int client, const char[] command, any args)
 	return Plugin_Changed;
 }
 
+bool CheckCheatClient(int client)
+{
+	for(int i = 1; i <= MaxClients; i++) if(IsValidClient(i) && IsClientInGame(i) && !IsFakeClient(i))
+	{
+		if(iAdminCheck[client] == i)
+			return true;
+	}
+	return false;
+}
+
+void CheckAdmin(int client)
+{
+	for(int i = 1; i <= MaxClients; i++) if(IsValidClient(i) && IsClientInGame(i) && !IsFakeClient(i))
+		if(iAdminCheck[client] == i)
+		{
+			PrintToChat(i, "Админ %N вышел при Вашей проверки, можете играть !", client);
+			LogToFile(sFile, "Админ [%N] вышел из игры при проверке игрока [%N]", client, i);
+			iAdminCheck[client] = 0;
+			iCCheat[i] = 0;
+			ClientCommand(i, "r_screenoverlay \"\"");
+		}
+}
+
 public void OnClientDisconnect(int client)
 {
+	CheckAdmin(client);
+		
 	if(iCCheat[client])
 	{
 		int admin = -1;
