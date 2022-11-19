@@ -7,7 +7,8 @@
 #include <sdktools_sound>
 
 ConVar
-	cvBanTime;
+	cvBanTime,
+	cvCheckAdmin;
 	
 Menu
 	hMenu[MAXPLAYERS+1];
@@ -31,7 +32,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.0.9",
+	version = "1.1.0",
 	url = "https://ggwp.site/"
 };
 
@@ -47,6 +48,8 @@ public void OnPluginStart()
 	HookConVarChange(cvar, OnConVarChanges_Sound);
 	
 	cvBanTime = CreateConVar("sm_cc_bantime", "700", "Время бана в минутах");
+	
+	cvCheckAdmin = CreateConVar("sm_cc_checkadmin", "1", "Можно ли вызвать админа на проверку?");
 	
 	RegAdminCmd("sm_cc", Cmd_CC, ADMFLAG_BAN, "Меню вызова на проверку");
 	
@@ -175,6 +178,9 @@ void CreatMenu(int client)
 	int iItem;
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
 	{
+		if(!cvCheckAdmin.BoolValue && GetUserFlagBits(i))
+			continue;
+			
 		iItem++;
 		iOneChosen[client][i] = iItem;
 		char sName[42];
