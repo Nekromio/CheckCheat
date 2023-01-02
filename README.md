@@ -1,7 +1,7 @@
 # CheckCheat
 Plugin for calling players to check for cheats
 
-EN:
+# EN:
 Description: The plugin makes it possible to conveniently check the player
 1. The player and the administrator are frozen in observers all the time of the check
 2. Menu call command for sm_cc admin
@@ -9,6 +9,7 @@ Description: The plugin makes it possible to conveniently check the player
 4. For convenience, you can embed a call button in the admin menu
 
 /addons/sourcemod/configs/adminmenu_custom.txt
+
 
 "Commands"
 {
@@ -26,7 +27,7 @@ Description: The plugin makes it possible to conveniently check the player
 5. In the settings file, you can change the call overlay and the ban time
 /cfg/sourcemod/cc.cfg
 
-RU:
+# RU
 Описание: Плагин даёт возможность удобной проверки игрока
 1. Игрок и администратор заморожены в наблюдателях всё время проверки
 2. Команда вызова меню для адмна sm_cc
