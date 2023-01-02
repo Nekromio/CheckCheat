@@ -9,8 +9,7 @@ Description: The plugin makes it possible to conveniently check the player
 4. For convenience, you can embed a call button in the admin menu
 
 /addons/sourcemod/configs/adminmenu_custom.txt
-
-
+<
 "Commands"
 {
 	"Checking for cheats"
@@ -22,7 +21,7 @@ Description: The plugin makes it possible to conveniently check the player
 		}
 	}
 }
-
+>
 
 5. In the settings file, you can change the call overlay and the ban time
 /cfg/sourcemod/cc.cfg
