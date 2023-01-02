@@ -34,7 +34,7 @@ Description: The plugin makes it possible to conveniently check the player
 4. Для удобства можно встроить в меню админа кнопку вызова
 
 /addons/sourcemod/configs/adminmenu_custom.txt
-
+```
 "Commands"
 {
 	"Проверка на читы"
@@ -47,6 +47,6 @@ Description: The plugin makes it possible to conveniently check the player
 		}
 	}
 }
-
+```
 5. В файле настроек можно изменить оверлей вызова и время бана
 /cfg/sourcemod/cc.cfg
