@@ -8,7 +8,9 @@
 
 ConVar
 	cvBanTime,
-	cvCheckAdmin;
+	cvCheckAdmin,
+	cvOverlay,
+	cvSound;
 	
 Menu
 	hMenu[MAXPLAYERS+1];
@@ -32,20 +34,15 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.1.0",
+	version = "1.1.2",
 	url = "https://ggwp.site/"
 };
 
 public void OnPluginStart()
 {
-	ConVar cvar;
-	cvar = CreateConVar("sm_cc_overlay", "overlay_cheats/ban_cheats_v10.vmt", "Оверлей");
-	GetConVarString(cvar, sOverlay, sizeof(sOverlay));
-	HookConVarChange(cvar, OnConVarChanges_Overlay);
+	cvOverlay = CreateConVar("sm_cc_overlay", "ggwp/cc/1.vmt", "Оверлей");
 	
-	cvar = CreateConVar("sm_cc_sound", "", "Звук для проигрывания подозреваемому | без папки sound/");
-	GetConVarString(cvar, sSound, sizeof(sSound));
-	HookConVarChange(cvar, OnConVarChanges_Sound);
+	cvSound = CreateConVar("sm_cc_sound", "", "Звук для проигрывания подозреваемому | без папки sound/");
 	
 	cvBanTime = CreateConVar("sm_cc_bantime", "700", "Время бана в минутах");
 	
@@ -88,16 +85,6 @@ void CheckInfoClient(int client)
 	GetClientAuthId(client, AuthId_Steam2, sSteam[client], sizeof(sSteam[]), true);
 }
 
-public void OnConVarChanges_Overlay(ConVar cvar, const char[] oldValue, const char[] newValue)
-{
-	GetConVarString(cvar, sOverlay, sizeof(sOverlay));
-}
-
-public void OnConVarChanges_Sound(ConVar cvar, const char[] oldValue, const char[] newValue)
-{
-	GetConVarString(cvar, sSound, sizeof(sSound));
-}
-
 public Action CreateOverlay(Handle timer)
 {
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && iCCheat[i])
@@ -118,19 +105,24 @@ public Action CreateOverlay(Handle timer)
 
 public void OnMapStart()
 {
-	char buffer[PLATFORM_MAX_PATH];
-	if(sSound[0])
+	char sBuffer[PLATFORM_MAX_PATH];
+	
+	cvSound.GetString(sBuffer, sizeof(sBuffer));
+	if(sBuffer[0])
 	{
-		char bufferSound[PLATFORM_MAX_PATH];
-		FormatEx(bufferSound, sizeof(bufferSound), "sound/%s", sSound);
-		AddFileToDownloadsTable(bufferSound);
-		PrecacheSound(sSound, true);
+		sSound = sBuffer;
+		PrecacheSound(sBuffer, true);
+		FormatEx(sBuffer, sizeof(sBuffer), "sound/%s", sBuffer);
+		AddFileToDownloadsTable(sBuffer);
 	}
-	if(sOverlay[0])
+	
+	cvOverlay.GetString(sBuffer, sizeof(sBuffer));
+	if(sBuffer[0])
 	{
-		Format(buffer, sizeof(buffer), "materials/%s", sOverlay);
-		Downloader_AddFileToDownloadsTable(buffer);
-		PrecacheModel(buffer, true);
+		sOverlay = sBuffer;
+		Format(sBuffer, sizeof(sBuffer), "materials/%s", sBuffer);
+		Downloader_AddFileToDownloadsTable(sBuffer);
+		PrecacheModel(sBuffer, true);
 	}
 }
 
@@ -143,7 +135,7 @@ public void OnMapEnd()
 	}
 }
 
-public Action Cmd_CC(int client, any arg)
+Action Cmd_CC(int client, any arg)
 {
 	if(!client)
 		return Plugin_Continue;
@@ -178,7 +170,7 @@ void CreatMenu(int client)
 	int iItem;
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
 	{
-		if(!cvCheckAdmin.BoolValue && GetUserFlagBits(i))
+		if(!cvCheckAdmin.BoolValue && GetUserFlagBits(i) && !(GetAdminFlag(GetUserAdmin(client), Admin_Root)))
 			continue;
 			
 		iItem++;
@@ -186,11 +178,11 @@ void CreatMenu(int client)
 		char sName[42];
 		Format(sName, sizeof(sName), "%N", i);
 		hMenu[client].AddItem("item1", sName);
-		//PrintToChatAll("[Проверка] Ник %N Индекс [%d] | Итем [%d]", i, i, iOneChosen[client][i]);
 	}
+
 }
 
-public int CreatMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
+int CreatMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
 	if(!IsValidClient(client))
 		return;
@@ -198,20 +190,18 @@ public int CreatMenuClient(Menu hMenuLocal, MenuAction action, int client, int i
 	iItem++;
 	int cheater;
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i))
+	{
 		if(iOneChosen[client][i] == iItem)
 		{
-			//cheater = iOneChosen[client][i];
 			cheater = i;
-			//PrintToChatAll("Индекс cheater равен [%d]", cheater);
 		}
+	}
 	if(action == MenuAction_Select)
 	{
 		CheckCheatsClient(client, cheater);
-		//PrintToChatAll("Выбран игрок [%N] Инекс [%d]/Пункт [%d]", iItem, iItem, iItem);
 	}
 	else if(action == MenuAction_End)
 	{
-		//hMenuLocal.Close();
 		delete hMenu[client];
 	}
 }
@@ -220,8 +210,7 @@ void CheckCheatsClient(int admin, int cheater)
 {
 	if(admin < 1 || cheater < 1)
 		return;
-		
-	//PrintToChatAll("Индекс [%d]", cheater);
+
 	if(IsClientInGame(cheater))
 		ChangeClientTeam(cheater, 1);
 	if(IsClientInGame(admin))
@@ -244,7 +233,7 @@ void MenuCheack(int admin, int cheater)
 	hMenu[admin].Display(admin, MENU_TIME_FOREVER);
 }
 
-public int CreatMenuCheack(int admin, int cheater)
+int CreatMenuCheack(int admin, int cheater)
 {
 	hMenu[admin] = new Menu(SelectMenuCheack);
 	char sTitle[64];
@@ -257,7 +246,7 @@ public int CreatMenuCheack(int admin, int cheater)
 	hMenu[admin].AddItem("item3", "Забанить игрока");
 }
 
-public int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
+int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
 	if(!IsValidClient(client) || !IsValidClient(iAdminCheck[client]))
 		return;
@@ -311,16 +300,14 @@ public int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int 
 	}
 	else if(action == MenuAction_End)
 	{
-		//hMenuLocal.Close();
 		if(IsValidClient(client))
 		{
 			delete hMenu[client];
-			//PrintToChatAll("Меню было удалено");
 		}
 	}
 }
 
-public void SpawnMenu(int client)
+void SpawnMenu(int client)
 {
 	hMenu[client].Display(client, MENU_TIME_FOREVER);
 }
@@ -332,7 +319,7 @@ stock bool IsValidClient(int client)
 	else return false;
 }
 
-public Action Command_JoinTeam(int client, const char[] command, any args)
+Action Command_JoinTeam(int client, const char[] command, any args)
 {
 	if(!IsValidClient(client))
 		return Plugin_Continue;
@@ -413,15 +400,8 @@ public Action OnClientSayCommand(int client, const char[] sCommand, const char[]
 		
 		if(StrEqual(sCommand, "say") || StrEqual(sCommand, "say_team"))
 		{
-			//LogToFile(sFile, "Игрок [%N]", client);
-			//PrintToChatAll("Игрок [%N][%d] отправил сообщение админу", client, client);
 			int admin = -1;
-/*		
-			for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client)
-			{
-				admin = iOneChosen[i][client];
-			}*/
-			
+
 			for(int i; i <= MaxClients; i++)
 				if(iAdminCheck[i] == client && i != client)
 					admin = i;
