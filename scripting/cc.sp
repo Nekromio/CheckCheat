@@ -34,7 +34,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.1.2",
+	version = "1.1.3",
 	url = "https://ggwp.site/"
 };
 
@@ -86,13 +86,11 @@ void CheckInfoClient(int client)
 }
 
 public Action CreateOverlay(Handle timer)
-{
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && iCCheat[i])
-		ClientCommand(i, "r_screenoverlay \"%s\"", sOverlay);
-	
+{	
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && iCCheat[i])
 	{
-		if(GetClientTeam(i) == 2 || GetClientTeam(i) == 3)
+		ClientCommand(i, "r_screenoverlay \"%s\"", sOverlay);
+		if(GetClientTeam(i) > 1)
 		{
 			ChangeClientTeam(i, 1);
 			PrintToChat(i, "Не пытайтесь жульничать ! Игра заблокирована до окончании проверки !");
@@ -128,11 +126,7 @@ public void OnMapStart()
 
 public void OnMapEnd()
 {
-	for(int i = 1; i <= MaxClients; i++) if(IsValidClient(i) && IsClientInGame(i))
-	{
-		iAdminCheck[i] = 0;
-		iCCheat[i] = 0;
-	}
+	for(int i = 1; i <= MaxClients; i++) iAdminCheck[i] = iCCheat[i] = 0;
 }
 
 Action Cmd_CC(int client, any arg)
@@ -154,23 +148,23 @@ Action Cmd_CC(int client, any arg)
 		return Plugin_Continue;
 	}
 	
-	CreatMenu(client);
+	CreateMenuCheck(client);
 	hMenu[client].Display(client, MENU_TIME_FOREVER);
 	
 	return Plugin_Changed;
 }
 
-void CreatMenu(int client)
+void CreateMenuCheck(int client)
 {
 	if(!IsValidClient(client))
 		return;
 	CheckFile();
-	hMenu[client] = new Menu(CreatMenuClient);
+	hMenu[client] = new Menu(CreateMenuClient);
 	hMenu[client].SetTitle("Кого вызвать на проверку?");
 	int iItem;
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
 	{
-		if(!cvCheckAdmin.BoolValue && GetUserFlagBits(i) && !(GetAdminFlag(GetUserAdmin(client), Admin_Root)))
+		if(!cvCheckAdmin.BoolValue && !(GetUserFlagBits(i) & ADMFLAG_ROOT))
 			continue;
 			
 		iItem++;
@@ -182,28 +176,24 @@ void CreatMenu(int client)
 
 }
 
-int CreatMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
+int CreateMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
-	if(!IsValidClient(client))
-		return;
-		
-	iItem++;
-	int cheater;
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i))
-	{
-		if(iOneChosen[client][i] == iItem)
-		{
-			cheater = i;
-		}
-	}
 	if(action == MenuAction_Select)
 	{
+		iItem++;
+		int cheater;
+		for(int i = 1; i <= MaxClients; i++) if(i != client && IsClientInGame(i) && !IsFakeClient(i) && iOneChosen[client][i] == iItem)
+		{
+			cheater = i;
+			break;
+		}
 		CheckCheatsClient(client, cheater);
 	}
 	else if(action == MenuAction_End)
 	{
 		delete hMenu[client];
 	}
+	return 0;
 }
 
 void CheckCheatsClient(int admin, int cheater)
@@ -211,10 +201,8 @@ void CheckCheatsClient(int admin, int cheater)
 	if(admin < 1 || cheater < 1)
 		return;
 
-	if(IsClientInGame(cheater))
-		ChangeClientTeam(cheater, 1);
-	if(IsClientInGame(admin))
-		ChangeClientTeam(admin, 1);
+	ChangeClientTeam(cheater, 1);
+	ChangeClientTeam(admin, 1);
 	
 	GetClientName(cheater, gsName[cheater], sizeof(gsName[]));
 	PrintToChat(cheater, "Напишите свой скайп/дискорд для проверки !");
@@ -229,11 +217,11 @@ void CheckCheatsClient(int admin, int cheater)
 
 void MenuCheack(int admin, int cheater)
 {
-	CreatMenuCheack(admin, cheater);
+	CreateMenuCheack(admin, cheater);
 	hMenu[admin].Display(admin, MENU_TIME_FOREVER);
 }
 
-int CreatMenuCheack(int admin, int cheater)
+int CreateMenuCheack(int admin, int cheater)
 {
 	hMenu[admin] = new Menu(SelectMenuCheack);
 	char sTitle[64];
@@ -244,21 +232,17 @@ int CreatMenuCheack(int admin, int cheater)
 	hMenu[admin].AddItem("item1", "Напомнить о контактах");
 	hMenu[admin].AddItem("item2", "Оправдан");
 	hMenu[admin].AddItem("item3", "Забанить игрока");
+	return 0;
 }
 
 int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
-	if(!IsValidClient(client) || !IsValidClient(iAdminCheck[client]))
-		return;
-		
 	if(action == MenuAction_Select)
 	{
 		switch(iItem)
 		{
 			case 0:
 			{
-				if(!IsValidClient(client) || !IsValidClient(iAdminCheck[client]))
-					return;
 				PrintToChat(iAdminCheck[client], "Вам необходимо написать свой скайп/дискорд !");
 				PrintToChat(client, "Вы напомнили о контактах игроку [%N]", iAdminCheck[client]);
 				LogToFile(sFile, "Админ [%N] напомнил о контактах [%N]", client, iAdminCheck[client]);
@@ -267,8 +251,6 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 			
 			case 1:
 			{
-				if(!IsValidClient(client) || !IsValidClient(iAdminCheck[client]))
-					return;
 				iCCheat[iAdminCheck[client]] = 0;
 				PrintToChat(iAdminCheck[client], "Проверка завершена ! Спасибо за сотрудничество !");
 				PrintToChat(client, "Вы завершили проверку [%N] - он чист !", iAdminCheck[client]);
@@ -280,8 +262,6 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 			
 			case 2:
 			{
-				if(!IsValidClient(client) || !IsValidClient(iAdminCheck[client]))
-					return;
 				iCCheat[iAdminCheck[client]] = 0;
 				PrintToChat(iAdminCheck[client], "Проверка завершена ! Вы были уличены в читерстве !");
 				LogToFile(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок уличен в читерстве !",
@@ -300,11 +280,9 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 	}
 	else if(action == MenuAction_End)
 	{
-		if(IsValidClient(client))
-		{
-			delete hMenu[client];
-		}
+		delete hMenu[client];
 	}
+	return 0;
 }
 
 void SpawnMenu(int client)
@@ -414,7 +392,7 @@ public Action OnClientSayCommand(int client, const char[] sCommand, const char[]
 			//PrintToChatAll("Игрок [%N][%s][%s] отправил контакты админу [%N][%d]: [%s]", client, sSteam[client], sIp[client], admin, admin, sText);
 			LogToFile(sFile, "Игрок [%N][%s][%s] отправил контакты админу [%N]: [%s]", client, sSteam[client], sIp[client], admin, sText);
 			iCCheat[client] = 2;
-			CreatMenuCheack(admin, client);
+			CreateMenuCheack(admin, client);
 			SpawnMenu(admin);
 		}
 		
