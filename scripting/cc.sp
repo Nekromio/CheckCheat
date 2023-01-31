@@ -34,7 +34,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.1.4",
+	version = "1.1.5",
 	url = "https://ggwp.site/"
 };
 
@@ -191,7 +191,10 @@ int CreateMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
 	}
 	else if(action == MenuAction_End)
 	{
-		delete hMenuLocal;
+		if(!IsValidClient(client))
+			return 0;
+		
+		delete hMenu[client];
 	}
 	return 0;
 }
@@ -280,7 +283,10 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 	}
 	else if(action == MenuAction_End)
 	{
-		delete hMenuLocal;
+		if(!IsValidClient(client))
+			return 0;
+		
+		delete hMenu[client];
 	}
 	return 0;
 }
