@@ -34,7 +34,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.1.5",
+	version = "1.1.6",
 	url = "https://ggwp.site/"
 };
 
@@ -106,11 +106,13 @@ public void OnMapStart()
 	char sBuffer[PLATFORM_MAX_PATH];
 	
 	cvSound.GetString(sBuffer, sizeof(sBuffer));
+	PrintToChatAll("Проверка 1 | [%s]", sBuffer);
 	if(sBuffer[0])
 	{
 		sSound = sBuffer;
 		PrecacheSound(sBuffer, true);
-		FormatEx(sBuffer, sizeof(sBuffer), "sound/%s", sBuffer);
+		FormatEx(sBuffer, sizeof(sBuffer), "sound/%s", sSound);
+		PrintToChatAll("Проверка 2 | [%s]", sBuffer);
 		AddFileToDownloadsTable(sBuffer);
 	}
 	
@@ -173,7 +175,6 @@ void CreateMenuCheck(int client)
 		Format(sName, sizeof(sName), "%N", i);
 		hMenu[client].AddItem("item1", sName);
 	}
-
 }
 
 int CreateMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
@@ -228,7 +229,6 @@ int CreateMenuCheack(int admin, int cheater)
 {
 	hMenu[admin] = new Menu(SelectMenuCheack);
 	char sTitle[64];
-	Format(sTitle, sizeof(sTitle), "Действия с %N", cheater);
 	Format(sTitle, sizeof(sTitle), "Действия с %N", cheater);
 	if(iCCheat[cheater] == 1) hMenu[admin].SetTitle(sTitle);
 	else if(iCCheat[cheater] == 2) hMenu[admin].SetTitle(sContact[cheater]); 
