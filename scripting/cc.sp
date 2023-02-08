@@ -106,13 +106,11 @@ public void OnMapStart()
 	char sBuffer[PLATFORM_MAX_PATH];
 	
 	cvSound.GetString(sBuffer, sizeof(sBuffer));
-	PrintToChatAll("Проверка 1 | [%s]", sBuffer);
 	if(sBuffer[0])
 	{
 		sSound = sBuffer;
 		PrecacheSound(sBuffer, true);
 		FormatEx(sBuffer, sizeof(sBuffer), "sound/%s", sSound);
-		PrintToChatAll("Проверка 2 | [%s]", sBuffer);
 		AddFileToDownloadsTable(sBuffer);
 	}
 	
