@@ -8,7 +8,7 @@
 
 ConVar
 	cvBanTime,
-	cvCheckAdmin,
+	cvCheckAdmin, 
 	cvOverlay,
 	cvSound;
 	
@@ -34,7 +34,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.1.8",
+	version = "1.1.9",
 	url = "https://ggwp.site/"
 };
 
@@ -164,7 +164,7 @@ void CreateMenuCheck(int client)
 	int iItem;
 	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
 	{
-		if(!cvCheckAdmin.BoolValue && (GetUserFlagBits(client) & ADMFLAG_BAN || GetUserFlagBits(client) & ADMFLAG_ROOT))
+		if(!cvCheckAdmin.BoolValue && (GetUserFlagBits(i) & ADMFLAG_BAN || GetUserFlagBits(i) & ADMFLAG_ROOT))
 			continue;
 			
 		iItem++;
@@ -244,6 +244,8 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 		{
 			case 0:
 			{
+				if(!IsValidClient(iAdminCheck[client]))
+					return 0;
 				PrintToChat(iAdminCheck[client], "Вам необходимо написать свой скайп/дискорд !");
 				PrintToChat(client, "Вы напомнили о контактах игроку [%N]", iAdminCheck[client]);
 				LogToFile(sFile, "Админ [%N] напомнил о контактах [%N]", client, iAdminCheck[client]);
@@ -252,6 +254,8 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 			
 			case 1:
 			{
+				if(!IsValidClient(iAdminCheck[client]))
+					return 0;
 				iCCheat[iAdminCheck[client]] = 0;
 				PrintToChat(iAdminCheck[client], "Проверка завершена ! Спасибо за сотрудничество !");
 				PrintToChat(client, "Вы завершили проверку [%N] - он чист !", iAdminCheck[client]);
@@ -263,7 +267,8 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 			
 			case 2:
 			{
-				if(!IsValidClient(iAdminCheck[client])) return 0;
+				if(!IsValidClient(iAdminCheck[client]))
+					return 0;
 				iCCheat[iAdminCheck[client]] = 0;
 				PrintToChat(iAdminCheck[client], "Проверка завершена ! Вы были уличены в читерстве !");
 				LogToFile(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок уличен в читерстве !",
