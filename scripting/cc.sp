@@ -34,7 +34,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.1.9",
+	version = "1.2.0",
 	url = "https://ggwp.site/"
 };
 
@@ -246,7 +246,7 @@ int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 			{
 				if(!IsValidClient(iAdminCheck[client]))
 					return 0;
-				PrintToChat(iAdminCheck[client], "Вам необходимо написать свой скайп/дискорд !");
+				PrintToChat(iAdminCheck[client], "Вам необходимо написать свой VK/TG !");
 				PrintToChat(client, "Вы напомнили о контактах игроку [%N]", iAdminCheck[client]);
 				LogToFile(sFile, "Админ [%N] напомнил о контактах [%N]", client, iAdminCheck[client]);
 				hMenu[client].Display(client, MENU_TIME_FOREVER);
@@ -302,12 +302,10 @@ void SpawnMenu(int client)
 
 stock bool IsValidClient(int client)
 {
-	if(0 < client <= MaxClients)
-		return true;
-	else return false;
+	return 0 < client <= MaxClients && IsClientInGame(client) && !IsFakeClient(client);
 }
 
-Action Command_JoinTeam(int client, const char[] command, any args)
+public Action Command_JoinTeam(int client, const char[] command, int args)
 {
 	if(!IsValidClient(client))
 		return Plugin_Continue;
