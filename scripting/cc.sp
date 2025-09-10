@@ -5,6 +5,11 @@
 #include <smartdm>
 #include <materialadmin>
 #include <sdktools_sound>
+#include <adminmenu>
+
+TopMenu hTop;
+
+TopMenuObject hCat;
 
 ConVar
 	cvBanTime,
@@ -29,12 +34,14 @@ char
 	sIp[MAXPLAYERS+1][16],
 	gsName[MAXPLAYERS+1][64];
 
+#include "cc/menu.sp"
+
 public Plugin myinfo =
 {
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | ggwp.site ",
 	description = "Вызов для проверки на читы",
-	version = "1.2.0",
+	version = "1.3.0",
 	url = "https://ggwp.site/"
 };
 
@@ -48,7 +55,7 @@ public void OnPluginStart()
 	
 	cvCheckAdmin = CreateConVar("sm_cc_checkadmin", "1", "Можно ли вызвать админа на проверку?");
 	
-	RegAdminCmd("sm_cc", Cmd_CC, ADMFLAG_BAN, "Меню вызова на проверку");
+	//RegAdminCmd("sm_cc", Cmd_CC, ADMFLAG_BAN, "Меню вызова на проверку");
 	
 	CheckFile();
 	
@@ -124,78 +131,17 @@ public void OnMapStart()
 	}
 }
 
+public void OnConfigsExecuted()
+{
+    if (LibraryExists("adminmenu")) {
+        TopMenu topmenu = GetAdminTopMenu();
+        if (topmenu != null) OnAdminMenuReady(topmenu);
+    }
+}
+
 public void OnMapEnd()
 {
 	for(int i = 1; i <= MaxClients; i++) iAdminCheck[i] = iCCheat[i] = 0;
-}
-
-Action Cmd_CC(int client, any arg)
-{
-	if(!client)
-		return Plugin_Continue;
-	
-	if(iCCheat[client])
-	{
-		PrintToChat(client, "Вы сейчас проходите проверку ! И не можете использовать это меню !");
-		LogToFile(sFile, "Админ [%N][%s][%s] пытался вызвать меню проверки !", client, sSteam[client], sIp[client]);
-		return Plugin_Continue;
-	}
-	
-	if(CheckCheatClient(client))
-	{
-		PrintToChat(client, "Вы сейчас и так проверяте игрока ! Завершите эту проверку !");
-		LogToFile(sFile, "Админ [%N][%s][%s] пытался вызвать меню проверки хотя и так проверял игрока !", client, sSteam[client], sIp[client]);
-		return Plugin_Continue;
-	}
-	
-	CreateMenuCheck(client);
-	hMenu[client].Display(client, MENU_TIME_FOREVER);
-	
-	return Plugin_Changed;
-}
-
-void CreateMenuCheck(int client)
-{
-	if(!IsValidClient(client))
-		return;
-	CheckFile();
-	hMenu[client] = new Menu(CreateMenuClient);
-	hMenu[client].SetTitle("Кого вызвать на проверку?");
-	int iItem;
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
-	{
-		if(!cvCheckAdmin.BoolValue && (GetUserFlagBits(i) & ADMFLAG_BAN || GetUserFlagBits(i) & ADMFLAG_ROOT))
-			continue;
-			
-		iItem++;
-		iOneChosen[client][i] = iItem;
-		char sName[42];
-		Format(sName, sizeof(sName), "%N", i);
-		hMenu[client].AddItem("item1", sName);
-	}
-}
-
-int CreateMenuClient(Menu hMenuLocal, MenuAction action, int client, int iItem)
-{
-	if(action == MenuAction_Select)
-	{
-		iItem++;
-		int cheater;
-		for(int i = 1; i <= MaxClients; i++) if(i != client && IsClientInGame(i) && !IsFakeClient(i) && iOneChosen[client][i] == iItem)
-		{
-			cheater = i;
-			break;
-		}
-		CheckCheatsClient(client, cheater);
-	}
-	else if(action == MenuAction_End)
-	{
-		if(!IsValidClient(client))
-			return 0;
-		
-		delete hMenu[client];
-	}
-	return 0;
 }
 
 void CheckCheatsClient(int admin, int cheater)
@@ -215,89 +161,6 @@ void CheckCheatsClient(int admin, int cheater)
 	if(sSound[0])
 		EmitSoundToClient(cheater, sSound);
 	
-}
-
-void MenuCheack(int admin, int cheater)
-{
-	CreateMenuCheack(admin, cheater);
-	hMenu[admin].Display(admin, MENU_TIME_FOREVER);
-}
-
-int CreateMenuCheack(int admin, int cheater)
-{
-	hMenu[admin] = new Menu(SelectMenuCheack);
-	char sTitle[64];
-	Format(sTitle, sizeof(sTitle), "Действия с %N", cheater);
-	if(iCCheat[cheater] == 1) hMenu[admin].SetTitle(sTitle);
-	else if(iCCheat[cheater] == 2) hMenu[admin].SetTitle(sContact[cheater]); 
-	hMenu[admin].AddItem("item1", "Напомнить о контактах");
-	hMenu[admin].AddItem("item2", "Оправдан");
-	hMenu[admin].AddItem("item3", "Забанить игрока");
-	return 0;
-}
-
-int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
-{
-	if(action == MenuAction_Select)
-	{
-		switch(iItem)
-		{
-			case 0:
-			{
-				if(!IsValidClient(iAdminCheck[client]))
-					return 0;
-				PrintToChat(iAdminCheck[client], "Вам необходимо написать свой VK/TG !");
-				PrintToChat(client, "Вы напомнили о контактах игроку [%N]", iAdminCheck[client]);
-				LogToFile(sFile, "Админ [%N] напомнил о контактах [%N]", client, iAdminCheck[client]);
-				hMenu[client].Display(client, MENU_TIME_FOREVER);
-			}
-			
-			case 1:
-			{
-				if(!IsValidClient(iAdminCheck[client]))
-					return 0;
-				iCCheat[iAdminCheck[client]] = 0;
-				PrintToChat(iAdminCheck[client], "Проверка завершена ! Спасибо за сотрудничество !");
-				PrintToChat(client, "Вы завершили проверку [%N] - он чист !", iAdminCheck[client]);
-				LogToFile(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок чист !",
-					client, sSteam[client], sIp[client], iAdminCheck[client], sSteam[iAdminCheck[client]], sIp[iAdminCheck[client]]);
-				ClientCommand(iAdminCheck[client], "r_screenoverlay \"\"");
-				iAdminCheck[client] = 0;
-			}
-			
-			case 2:
-			{
-				if(!IsValidClient(iAdminCheck[client]))
-					return 0;
-				iCCheat[iAdminCheck[client]] = 0;
-				PrintToChat(iAdminCheck[client], "Проверка завершена ! Вы были уличены в читерстве !");
-				LogToFile(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок уличен в читерстве !",
-					client, sSteam[client], sIp[client], iAdminCheck[client], sSteam[iAdminCheck[client]], sIp[iAdminCheck[client]]);
-				//BanClient(iAdminCheck[client], 1, 0, "Не прошёл проверку и был забанен !", "Вы не прошли проверку на читы и были забанены !");
-				MABanPlayer(client, iAdminCheck[client], MA_BAN_STEAM, cvBanTime.IntValue, "Вы не прошли проверку на читы и были забанены !");
-				ClientCommand(iAdminCheck[client], "r_screenoverlay \"\"");
-				iAdminCheck[client] = 0;
-			}
-		}
-	}
-	else if(action == MenuAction_Cancel)
-	{
-		if(iAdminCheck[client])
-			RequestFrame(SpawnMenu, client);
-	}
-	else if(action == MenuAction_End)
-	{
-		if(!IsValidClient(client))
-			return 0;
-		
-		delete hMenu[client];
-	}
-	return 0;
-}
-
-void SpawnMenu(int client)
-{
-	hMenu[client].Display(client, MENU_TIME_FOREVER);
 }
 
 stock bool IsValidClient(int client)
