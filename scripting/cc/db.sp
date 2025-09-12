@@ -212,3 +212,5 @@ public void Migrate_CB_MySQL(Database db, DBResultSet res, const char[] err, any
     iStepMySQL++;
     Migrate_RunNext_MySQL();
 }
+
+//  Отправляем данные о начале проверки

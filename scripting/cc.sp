@@ -61,13 +61,6 @@ enum struct settings{
 		GetClientAuthId(this.id, AuthId_Steam2, this.steam, sizeof(this.steam), true);
 	}
 
-	//	Сбрасываем с подозреваемого статус првоерки и проверяемого админа
-	void ResetCehck()
-	{
-		this.suspect = SUSPECT_NONE;
-		this.checkedBy = 0;
-	}
-
 	void ResetCehckAll()
 	{
 		this.suspect = SUSPECT_NONE;
@@ -86,7 +79,7 @@ public Plugin myinfo =
 	name = "[Any] CheckCheats/Проверка на читы",
 	author = "Nek.'a 2x2 | vk.com/nekromio | t.me/sourcepwn ",
 	description = "Вызов для проверки на читы",
-	version = "1.3.1",
+	version = "1.3.2",
 	url = "https://ggwp.site/"
 };
 
@@ -235,42 +228,6 @@ public Action Command_JoinTeam(int client, const char[] command, int args)
 	return Plugin_Handled;
 }
 
-//	Проверяем наличие игрока на проверке
-bool IsClientUnderCheck(int client)
-{
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i))
-	{
-		if(player[client].examiner == i)
-			return true;
-	}
-	return false;
-}
-
-//	Узнаём какой именно админ вызвал на проверку этого игрока
-int GetClientExaminer(int client)
-{
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && player[i].examiner == client)
-	{
-		return i;
-	}
-	return -1;
-}
-
-//	Проверяем вышел ли админ при проведении проверки, если да, то сбрасываем проверку
-void ResetCheckIfAdminLeft(int client)
-{
-	for(int i = 1; i <= MaxClients; i++) if(IsValidClient(i) && IsClientInGame(i) && !IsFakeClient(i))
-		if(player[client].examiner == i)
-		{
-			PrintToChat(i, "Админ %N вышел при Вашей проверки, можете играть !", client);
-			LogToFileOnly(sFile, "Админ [%N] вышел из игры при проверке игрока [%N]", client, i);
-			ClientCommand(i, "r_screenoverlay \"\"");
-
-			player[client].examiner = 0;
-			player[client].suspect = SUSPECT_NONE;
-		}
-}
-
 public void OnClientDisconnect(int client)
 {
 	ResetCheckIfAdminLeft(client);
@@ -278,23 +235,15 @@ public void OnClientDisconnect(int client)
 	if(player[client].suspect == SUSPECT_NONE)
 		return;
 	
-	int admin = GetClientExaminer(client);
+	int admin = player[client].checkedBy;
 	
-	if(IsValidClient(admin))		//
-		MAOffBanPlayer(admin, MA_BAN_STEAM, player[client].steam, player[client].ip, player[client].name, cvBanTime.IntValue, "Вы покинули сервер при проверки !");
-	else
-		MAOffBanPlayer(0, MA_BAN_STEAM, player[client].steam, player[client].ip, player[client].name, cvBanTime.IntValue, "Вы покинули сервер при проверки !");
+	MAOffBanPlayer(admin, MA_BAN_STEAM, player[client].steam, player[client].ip, player[client].name, cvBanTime.IntValue, "Вы покинули сервер при проверки !");
 
-	player[client].ResetCehck();
+	ResetCehck(admin, client);
 	
 	PrintToChatAll("Игрок [%N] вышел с сервера во время проверки и был забанен на [%d] минут !", client, cvBanTime.IntValue);
 	LogToFileOnly(sFile, "Игрок [%N][%s][%s] вышел с сервера во время проверки и был забанен на [%d] минут админом [%N][%s][%s] !",
 		client, player[client].steam, player[client].ip, cvBanTime.IntValue, admin, player[admin].steam, player[admin].ip);
-	
-	if(!IsValidClient(admin))
-		return;
-	
-	player[admin].examiner = 0;
 }
 
 public Action OnClientSayCommand(int client, const char[] sCommand, const char[] arg)
@@ -308,10 +257,10 @@ public Action OnClientSayCommand(int client, const char[] sCommand, const char[]
 		
 		if(StrEqual(sCommand, "say") || StrEqual(sCommand, "say_team"))
 		{
-			int admin = GetClientExaminer(client);
+			int admin = player[client].checkedBy;
 
-			if(admin == -1)
-				LogToFileOnly(sFile, "Ошибка, индекс админа -1!");
+			if(!admin)
+				LogToFileOnly(sFile, "[ERROR] Администратор не найден!");
 
 			PrintToChat(admin, sText);
 			player[client].contact = sText;
@@ -360,4 +309,45 @@ int getIndex(Menu menu, int item)
     menu.GetItem(item, buffer, sizeof(buffer));
     int target = StringToInt(buffer);
     return target;
+}
+
+//	Проверяем наличие игрока на проверке
+bool IsClientUnderCheck(int client)
+{
+	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i))
+	{
+		if(player[client].examiner == i)
+			return true;
+	}
+	return false;
+}
+
+//	Узнаём какой именно админ вызвал на проверку этого игрока
+stock int GetClientExaminer(int client)
+{
+	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && player[i].examiner == client)
+	{
+		return i;
+	}
+	return -1;
+}
+
+//	Проверяем вышел ли админ при проведении проверки, если да, то сбрасываем проверку
+stock void ResetCheckIfAdminLeft(int client)
+{
+	if(!player[client].examiner)
+		return;
+
+	int target = player[client].examiner;
+
+	PrintToChat(target, "Админ %N вышел при Вашей проверки, можете играть!", client);
+	LogToFileOnly(sFile, "Админ [%N] вышел из игры при проверке игрока [%N]", client, target);
+	ClientCommand(target, "r_screenoverlay \"\"");
+}
+
+void ResetCehck(int admin, int suspect)
+{
+	player[admin].examiner = 0;
+	player[suspect].checkedBy = 0;
+	player[suspect].suspect = SUSPECT_NONE;
 }
