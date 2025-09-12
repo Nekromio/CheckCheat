@@ -73,20 +73,20 @@ void CreateMenuCheck(int client)
 	CheckFile();
 	hMenu[client] = new Menu(CreateMenuClient);
 	hMenu[client].SetTitle("Кого вызвать на проверку?");
-	int iItem;
-	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client && !iCCheat[i] && !CheckCheatClient(client))
+	char buffer[8];
+	int count;
+	for(int i = 1; i <= MaxClients; i++) if(IsClientInGame(i) && !IsFakeClient(i) && i != client &&
+		player[i].suspect == SUSPECT_NONE	//	Игрок не на проверки в данный момент
+		&& !IsClientUnderCheck(client)		//	Админ не имеет игрока на проверке
+		)
 	{
 		if(!cvCheckAdmin.BoolValue && (GetUserFlagBits(i) & ADMFLAG_BAN || GetUserFlagBits(i) & ADMFLAG_ROOT))
 			continue;
-			
-		iItem++;
-		iOneChosen[client][i] = iItem;
-		char sName[42];
-		Format(sName, sizeof(sName), "%N", i);
-		hMenu[client].AddItem("item1", sName);
-		
+		count++;
+		Format(buffer, sizeof(buffer), "%d", i);
+		hMenu[client].AddItem(buffer, player[i].name);
 	}
-	if(!iItem)
+	if(!count)
 	{
 		delete hMenu[client];
 		NothingMenu(client);
@@ -99,13 +99,13 @@ void CreateMenuCheck(int client)
 
 int CreateMenuClient(Menu menu, MenuAction action, int client, int item)
 {
+	if(!IsValidClient(client))
+		return 0;
+
     switch (action)
     {
         case MenuAction_End:
         {
-            if(!IsValidClient(client))
-			    return 0;
-		
 		    delete hMenu[client];
         }
 
@@ -117,19 +117,8 @@ int CreateMenuClient(Menu menu, MenuAction action, int client, int item)
 
         case MenuAction_Select:
         {
-            int idx = item + 1;
-            int cheater = 0;
-
-            for (int i = 1; i <= MaxClients; i++)
-            {
-                if (i != client && IsClientInGame(i) && !IsFakeClient(i) && iOneChosen[client][i] == idx)
-                {
-                    cheater = i;
-                    break;
-                }
-            }
-
-            CheckCheatsClient(client, cheater);
+			int target = getIndex(menu, item);
+            StartCheckAndNotify(client, target);
         }
     }
 
@@ -142,14 +131,15 @@ void MenuCheack(int admin, int cheater)
 	hMenu[admin].Display(admin, MENU_TIME_FOREVER);
 }
 
-
 int CreateMenuCheack(int admin, int cheater)
 {
 	hMenu[admin] = new Menu(SelectMenuCheack);
 	char sTitle[64];
 	Format(sTitle, sizeof(sTitle), "Действия с %N", cheater);
-	if(iCCheat[cheater] == 1) hMenu[admin].SetTitle(sTitle);
-	else if(iCCheat[cheater] == 2) hMenu[admin].SetTitle(sContact[cheater]); 
+	if(player[cheater].suspect == SUSPECT_ON_CHECK) 
+		hMenu[admin].SetTitle(sTitle);
+	else if(player[cheater].suspect == SUSPECT_CONTACT_GIVEN)
+		hMenu[admin].SetTitle(player[cheater].contact); 
 	hMenu[admin].AddItem("item1", "Напомнить о контактах");
 	hMenu[admin].AddItem("item2", "Оправдан");
 	hMenu[admin].AddItem("item3", "Забанить игрока");
@@ -158,58 +148,52 @@ int CreateMenuCheack(int admin, int cheater)
 
 int SelectMenuCheack(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
+	if(!IsValidClient(client) || !IsValidClient(player[client].examiner))
+			return 0;
+	int target = player[client].examiner;
+
 	if(action == MenuAction_Select)
 	{
 		switch(iItem)
 		{
 			case 0:
 			{
-				if(!IsValidClient(iAdminCheck[client]))
-					return 0;
-				PrintToChat(iAdminCheck[client], "Вам необходимо написать свой VK/TG !");
-				PrintToChat(client, "Вы напомнили о контактах игроку [%N]", iAdminCheck[client]);
-				LogToFile(sFile, "Админ [%N] напомнил о контактах [%N]", client, iAdminCheck[client]);
+				PrintToChat(target, "Вам необходимо написать свой VK/TG !");
+				PrintToChat(client, "Вы напомнили о контактах игроку [%N]", target);
+				LogToFileOnly(sFile, "Админ [%N] напомнил о контактах [%N]", client, target);
 				hMenu[client].Display(client, MENU_TIME_FOREVER);
 			}
 			
 			case 1:
 			{
-				if(!IsValidClient(iAdminCheck[client]))
-					return 0;
-				iCCheat[iAdminCheck[client]] = 0;
-				PrintToChat(iAdminCheck[client], "Проверка завершена ! Спасибо за сотрудничество !");
-				PrintToChat(client, "Вы завершили проверку [%N] - он чист !", iAdminCheck[client]);
-				LogToFile(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок чист !",
-					client, sSteam[client], sIp[client], iAdminCheck[client], sSteam[iAdminCheck[client]], sIp[iAdminCheck[client]]);
-				ClientCommand(iAdminCheck[client], "r_screenoverlay \"\"");
-				iAdminCheck[client] = 0;
+				player[target].suspect = SUSPECT_NONE;
+				PrintToChat(target, "Проверка завершена ! Спасибо за сотрудничество !");
+				PrintToChat(client, "Вы завершили проверку [%N] - он чист !", target);
+				LogToFileOnly(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок чист !",
+					client, player[client].steam, player[client].ip, target, player[target].steam, player[target].ip);
+				ClientCommand(target, "r_screenoverlay \"\"");
+				player[client].examiner = 0;
 			}
 			
 			case 2:
 			{
-				if(!IsValidClient(iAdminCheck[client]))
-					return 0;
-				iCCheat[iAdminCheck[client]] = 0;
-				PrintToChat(iAdminCheck[client], "Проверка завершена ! Вы были уличены в читерстве !");
-				LogToFile(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок уличен в читерстве !",
-					client, sSteam[client], sIp[client], iAdminCheck[client], sSteam[iAdminCheck[client]], sIp[iAdminCheck[client]]);
-				//BanClient(iAdminCheck[client], 1, 0, "Не прошёл проверку и был забанен !", "Вы не прошли проверку на читы и были забанены !");
-				MABanPlayer(client, iAdminCheck[client], MA_BAN_STEAM, cvBanTime.IntValue, "Вы не прошли проверку на читы и были забанены !");
-				ClientCommand(iAdminCheck[client], "r_screenoverlay \"\"");
-				iAdminCheck[client] = 0;
+				player[target].suspect = SUSPECT_NONE;
+				PrintToChat(target, "Проверка завершена ! Вы были уличены в читерстве !");
+				LogToFileOnly(sFile, "Игрок [%N][%s][%s] завершил проверку [%N][%s][%s] ! Игрок уличен в читерстве !",
+					client, player[client].steam, player[client].ip, target, player[target].steam, player[target].ip);
+				//BanClient(target, 1, 0, "Не прошёл проверку и был забанен !", "Вы не прошли проверку на читы и были забанены !");
+				MABanPlayer(client, target, MA_BAN_STEAM, cvBanTime.IntValue, "Вы не прошли проверку на читы и были забанены !");
+				ClientCommand(target, "r_screenoverlay \"\"");
+				player[client].examiner = 0;
 			}
 		}
 	}
 	else if(action == MenuAction_Cancel)
 	{
-		if(iAdminCheck[client])
-			RequestFrame(SpawnMenu, client);
+		RequestFrame(SpawnMenu, client);
 	}
 	else if(action == MenuAction_End)
 	{
-		if(!IsValidClient(client))
-			return 0;
-		
 		delete hMenu[client];
 	}
 	return 0;
